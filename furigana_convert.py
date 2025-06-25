@@ -7,7 +7,7 @@ import uno
 KANJI = r'\u4E00-\u9FFF'
 KANA  = r'\u3040-\u309F\u30A0-\u30FFー'       # хира + ката + «ー»
 
-PATTERN = re.compile(fr'([{KANJI}{KANA}]+)（([{KANA}]+)）')
+PATTERN = re.compile(fr'([{KANJI}][{KANJI}{KANA}]*)（([{KANA}]+)）')
 
 def is_kanji(ch: str) -> bool:
     return '\u4E00' <= ch <= '\u9FFF'
