@@ -12,17 +12,62 @@ PATTERN = re.compile(fr'([{KANJI}{KANA}]+)（([{KANA}]+)）')
 def is_kanji(ch: str) -> bool:
     return '\u4E00' <= ch <= '\u9FFF'
 
-def core_of(word: str) -> tuple[int, int]:
+def split_word_readings(word: str, kana: str) -> list[tuple[int, int, str]]:
     """
-    Возвращает (offset, length) той части word, которая начинается
-    с ПОСЛЕДНЕЙ группы кандзи и захватывает хвостовую хирагану/катакану.
+    Разбивает слово и чтение на отдельные части для каждой группы кандзи.
+    Возвращает список (offset, length, reading) для каждой части.
     """
-    last_k = max(i for i, c in enumerate(word) if is_kanji(c))
-    # идём влево, пока подряд идут кандзи
-    start = last_k
-    while start > 0 and is_kanji(word[start - 1]):
-        start -= 1
-    return start, len(word) - start
+    result = []
+    word_pos = 0
+    kana_pos = 0
+    
+    while word_pos < len(word):
+        if is_kanji(word[word_pos]):
+            # Найти группу подряд идущих кандзи
+            kanji_start = word_pos
+            while word_pos < len(word) and is_kanji(word[word_pos]):
+                word_pos += 1
+            
+            # Найти следующую хирагану/катакану после кандзи
+            kana_start = word_pos
+            while word_pos < len(word) and not is_kanji(word[word_pos]):
+                word_pos += 1
+            
+            # Определить длину чтения для этой группы
+            # Простая эвристика: распределяем чтение пропорционально
+            kanji_count = word_pos - kanji_start
+            if kanji_count == 1:
+                # Для одного кандзи берем чтение до следующего кандзи или до конца
+                reading_end = kana_pos
+                while reading_end < len(kana):
+                    # Ищем границу чтения (обычно 2-4 символа на кандзи)
+                    if reading_end - kana_pos >= 4:
+                        break
+                    # Проверяем, не начинается ли следующее чтение
+                    remaining_kanji = sum(1 for i in range(word_pos, len(word)) if is_kanji(word[i]))
+                    remaining_kana = len(kana) - reading_end - 1
+                    if remaining_kanji > 0 and remaining_kana / remaining_kanji < 1.5:
+                        break
+                    reading_end += 1
+                
+                if reading_end > len(kana):
+                    reading_end = len(kana)
+                    
+                reading = kana[kana_pos:reading_end]
+                kana_pos = reading_end
+            else:
+                # Для группы кандзи берем пропорциональную часть оставшегося чтения
+                remaining_kanji = sum(1 for i in range(kanji_start, len(word)) if is_kanji(word[i]))
+                remaining_kana = len(kana) - kana_pos
+                reading_len = min(remaining_kana, max(2, remaining_kana * kanji_count // remaining_kanji))
+                reading = kana[kana_pos:kana_pos + reading_len]
+                kana_pos += reading_len
+            
+            result.append((kanji_start, word_pos - kanji_start, reading))
+        else:
+            word_pos += 1
+    
+    return result
 
 def furigana_convert(*args):
     doc = XSCRIPTCONTEXT.getDocument()
@@ -35,25 +80,32 @@ def furigana_convert(*args):
         if not para.supportsService("com.sun.star.text.Paragraph"):
             continue
 
-        while True:
-            m = PATTERN.search(para.String)
-            if not m:
-                break
+        # Обрабатываем все совпадения в обратном порядке, чтобы не сбить позиции
+        matches = list(PATTERN.finditer(para.String))
+        for m in reversed(matches):
+            word, kana = m.groups()
+            abs_start = m.start()
 
-            word, kana  = m.groups()
-            abs_start   = m.start()
+            # Получаем все части слова с их чтениями
+            parts = split_word_readings(word, kana)
 
-            rel_off, core_len = core_of(word)
+            # Применяем руби для каждой части (в обратном порядке)
+            for rel_off, part_len, reading in reversed(parts):
+                if reading:  # Только если есть чтение
+                    ruby_cur = doc.Text.createTextCursorByRange(para.getStart())
+                    ruby_cur.goRight(abs_start + rel_off, False)
+                    ruby_cur.goRight(part_len, True)
+                    ruby_cur.RubyText = reading
 
-            # 1. ставим руби на «ядро»
-            ruby_cur = doc.Text.createTextCursorByRange(para.getStart())
-            ruby_cur.goRight(abs_start + rel_off, False)
-            ruby_cur.goRight(core_len, True)
-            ruby_cur.RubyText = kana
-
-            # 2. убираем «（kana）»
-            del_cur = doc.Text.createTextCursorByRange(ruby_cur.getEnd())
-            del_cur.goRight(len(kana) + 2, True)
+            # Убираем «（kana）»
+            del_cur = doc.Text.createTextCursorByRange(para.getStart())
+            del_cur.goRight(m.end() - 1, False)  # Позиция перед '）'
+            del_cur.goRight(1, True)  # Выделяем '）'
+            del_cur.String = ""
+            
+            del_cur = doc.Text.createTextCursorByRange(para.getStart())
+            del_cur.goRight(abs_start + len(word), False)  # Позиция перед '（'
+            del_cur.goRight(len(kana) + 1, True)  # Выделяем '（kana'
             del_cur.String = ""
 
     doc.getCurrentController().getFrame().getContainerWindow().setFocus()
