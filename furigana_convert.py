@@ -70,7 +70,7 @@ def split_word_readings(word: str, kana: str) -> list[tuple[int, int, str]]:
     return result
 
 def furigana_convert(*args):
-    doc = XSCRIPTCONTEXT.getDocument()
+    doc = XSCRIPTCONTEXT.getDocument()  # noqa: F821
     if not doc.supportsService("com.sun.star.text.TextDocument"):
         raise RuntimeError("Откройте документ Writer")
 
