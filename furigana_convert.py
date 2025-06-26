@@ -7,7 +7,7 @@ import uno
 KANJI = r'\u4E00-\u9FFF'
 KANA  = r'\u3040-\u309F\u30A0-\u30FFー'       # хира + ката + «ー»
 
-PATTERN = re.compile(fr'([{KANJI}]+[{KANA}]*)（([{KANA}]+)）')
+PATTERN = re.compile(fr'([{KANJI}]+[{KANA}]*)[（(]([{KANA}]+)[）)]')
 
 def is_kanji(ch: str) -> bool:
     return '\u4E00' <= ch <= '\u9FFF'
@@ -36,10 +36,10 @@ def furigana_convert(*args):
             ruby_cur.goRight(len(word), True)
             ruby_cur.RubyText = kana
 
-            # Убираем «（kana）»
+            # Убираем «（kana）» или «(kana)»
             del_cur = doc.Text.createTextCursorByRange(para.getStart())
-            del_cur.goRight(abs_start + len(word), False)  # Позиция перед '（'
-            del_cur.goRight(len(kana) + 2, True)  # Выделяем '（kana）'
+            del_cur.goRight(abs_start + len(word), False)  # Позиция перед скобкой
+            del_cur.goRight(len(kana) + 2, True)  # Выделяем скобки с kana
             del_cur.String = ""
 
     doc.getCurrentController().getFrame().getContainerWindow().setFocus()
