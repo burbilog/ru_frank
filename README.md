@@ -19,8 +19,8 @@
 
 #### Рекомендуемые модели
 
-- **Высокое качество:**: Claude Sonnet 4, ChatGPT O3, Gemini 2.5 Pro
-- **Бюджетные варианты:**: GPT-4 Mini, DeepSeek R1, Qwen3 235B A22B, Llama 4 Maverick
+- **Высокое качество:** Claude Sonnet 4, ChatGPT O3, Gemini 2.5 Pro
+- **Бюджетные варианты:** GPT-4 Mini, DeepSeek R1, Qwen3 235B A22B, Llama 4 Maverick
 
 #### Процесс работы
 
