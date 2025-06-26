@@ -49,11 +49,11 @@
 #### Предварительные требования
 ```bash
 sudo apt install libreoffice-script-provider-python
-mkdir -p ~/.config/libreoffice/4/user/Scripts/python
 ```
 
 #### Установка скрипта
 ```bash
+mkdir -p ~/.config/libreoffice/4/user/Scripts/python
 cp furigana_convert.py ~/.config/libreoffice/4/user/Scripts/python/
 ```
 
